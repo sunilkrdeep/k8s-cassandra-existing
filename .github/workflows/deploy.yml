@@ -25,14 +25,13 @@ jobs:
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       # 2. Connect directly to your EXISTING AKS Cluster
-      # Ensure you have replaced these placeholders with your actual running cluster details
       - name: Get AKS Context Credentials
         uses: azure/aks-set-context@v4
         with:
           resource-group: 'aks-sutramind-rg'
           cluster-name: 'aks-sutramind'
 
-      # 3. Add official Helm Repositories (CRITICAL: Added jetstack chart indexing here)
+      # 3. Add official Helm Repositories
       - name: Add Helm Repositories
         run: |
           helm repo remove k8ssandra || true
@@ -40,12 +39,12 @@ jobs:
           helm repo add k8ssandra https://helm.k8ssandra.io --force-update
           helm repo add jetstack https://charts.jetstack.io --force-update
           helm repo update
-          
+
       # 4. Create the target namespace using the standardized path
       - name: Create Cassandra Namespace
         run: kubectl apply -f k8s/namespace.yaml
 
-      # 4b. Install Cert-Manager (Now it will find the jetstack repository)
+      # 4b. Install Cert-Manager
       - name: Install Cert-Manager
         run: |
           helm upgrade --install cert-manager oci://quay.io/jetstack/charts/cert-manager \
@@ -53,14 +52,51 @@ jobs:
             --create-namespace \
             --set installCRDs=true
 
-     # 5. Install the K8ssandra Operator (Control plane layer)
+      # 5. Install the K8ssandra Operator (Control plane layer)
       - name: Install K8ssandra Operator
         run: |
           helm upgrade --install k8ssandra-operator k8ssandra/k8ssandra-operator \
             --namespace cassandra
 
-      # 6. Deploy the actual Cassandra Database Cluster Ring via Native CRD (Bypasses Helm)
+      # 5b. Ensure Operator Webhook Endpoint is Ready
+      - name: Ensure Operator Webhook Endpoint is Ready
+        run: |
+          echo "Waiting for k8ssandra-operator webhook endpoint to be ready..."
+          kubectl rollout status deployment/k8ssandra-operator -n cassandra --timeout=180s          
+          # Retry loop to verify endpoint presence
+          for i in {1..10}; do
+            ENDPOINTS=$(kubectl get endpoints k8ssandra-operator-webhook-service -n cassandra -o jsonpath='{.subsets[*].addresses[*].ip}')
+            if [ -n "$ENDPOINTS" ]; then
+              echo "Webhook endpoints ready: $ENDPOINTS"
+              break
+            fi
+            echo "Waiting for endpoints..."
+            sleep 5
+          done
+
+      # 5c. Check if Cassandra Cluster is already running
+      - name: Check Existing Cassandra Cluster
+        id: check_cassandra
+        run: |
+          # Query existing K8ssandraCluster objects in the cassandra namespace
+          EXISTING_CLUSTERS=$(kubectl get k8ssandracluster -n cassandra --no-headers 2>/dev/null | wc -l)
+          
+          if [ "$EXISTING_CLUSTERS" -gt 0 ]; then
+            echo "Cassandra cluster already exists and is running."
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "No existing Cassandra cluster found."
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      # 6. Deploy the actual Cassandra Database Cluster Ring via Native CRD (Bypasses Helm if running)
       - name: Deploy Cassandra Cluster Ring
+        if: steps.check_cassandra.outputs.exists == 'false'
         run: |
           kubectl apply -f k8s/k8ssandra-cluster.yaml
-          
+
+      # 7. Notify if deployment was skipped
+      - name: Skip Cassandra Cluster Deployment
+        if: steps.check_cassandra.outputs.exists == 'true'
+        run: |
+          echo "Skipping Cassandra cluster creation as it is already running."
