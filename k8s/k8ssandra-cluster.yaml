@@ -10,7 +10,7 @@ spec:
     datacenters:
       - metadata:
           name: "dc1" # FIXED: Placed inside a nested metadata block
-        size: 3
+        size: 1
         storageConfig:
           cassandraDataVolumeClaimSpec:
             storageClassName: "managed-csi-premium"
