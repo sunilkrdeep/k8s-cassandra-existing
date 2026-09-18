@@ -48,7 +48,7 @@ jobs:
       # 4b. Install Cert-Manager (Now it will find the jetstack repository)
       - name: Install Cert-Manager
         run: |
-          helm upgrade --install cert-manager jetstack/cert-manager \
+          helm upgrade --install cert-manager oci://quay.io/jetstack/charts/cert-manager \
             --namespace cert-manager \
             --create-namespace \
             --set installCRDs=true
