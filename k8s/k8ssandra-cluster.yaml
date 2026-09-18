@@ -1,24 +1,24 @@
 apiVersion: k8ssandra.io/v1alpha1
 kind: K8ssandraCluster
 metadata:
-  name: cassandra-dev
+  name: cassandra-prod
   namespace: cassandra
 spec:
   cassandra:
     clusterName: "aks-cassandra-ring"
     serverVersion: "4.1.3"
     datacenters:
-      - name: "dc1"
-        size: 3 # Deploys a standard 3-node distributed ring for database quorum
+      - metadata:
+          name: "dc1" # FIXED: Placed inside a nested metadata block
+        size: 3
         storageConfig:
           cassandraDataVolumeClaimSpec:
-            storageClassName: "managed-csi-premium" # Hooks into Azure Premium Disks natively
+            storageClassName: "managed-csi-premium"
             accessModes:
               - ReadWriteOnce
             resources:
               requests:
                 storage: 1Gi
-        # Ensures database pods have sufficient resource guarantees on your existing nodes
         resources:
           requests:
             memory: 1Gi
