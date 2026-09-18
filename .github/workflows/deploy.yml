@@ -30,8 +30,8 @@ jobs:
       - name: Get AKS Context Credentials
         uses: azure/aks-set-context@v4
         with:
-          resource-group: 'YOUR_EXISTING_RESOURCE_GROUP_NAME'
-          cluster-name: 'YOUR_EXISTING_AKS_CLUSTER_NAME'
+          resource-group: 'aks-sutramind-rg'
+          cluster-name: 'aks-sutramind'
 
       # 3. Add the official K8ssandra Helm Repositories
       - name: Add Helm Repositories
