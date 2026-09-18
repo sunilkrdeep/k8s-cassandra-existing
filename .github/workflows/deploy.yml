@@ -20,7 +20,7 @@ jobs:
       - name: Azure Login via OIDC
         uses: azure/login@v3
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
@@ -29,8 +29,8 @@ jobs:
       - name: Get AKS Context Credentials
         uses: azure/aks-set-context@v4
         with:
-          resource-group: 'YOUR_EXISTING_RESOURCE_GROUP_NAME'
-          cluster-name: 'YOUR_EXISTING_AKS_CLUSTER_NAME'
+          resource-group: 'aks-sutramind-rg'
+          cluster-name: 'aks-sutramind'
 
       # 3. Add official Helm Repositories (CRITICAL: Added jetstack chart indexing here)
       - name: Add Helm Repositories
