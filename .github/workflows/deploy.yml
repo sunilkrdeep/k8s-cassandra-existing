@@ -45,6 +45,14 @@ jobs:
          # 4. Create the target namespace
       - name: Create Cassandra Namespace
         run: kubectl apply -f k8s/namespace.yaml
+        
+         # 4b. Install Cert-Manager (Fixes the dependency error)
+      - name: Install Cert-Manager
+        run: |
+          helm upgrade --install cert-manager jetstack/cert-manager \
+            --namespace cert-manager \
+            --create-namespace \
+            --set installCRDs=true
 
       # 5. Install the K8ssandra Operator from the remote Helm Repository index
       - name: Install K8ssandra Operator
