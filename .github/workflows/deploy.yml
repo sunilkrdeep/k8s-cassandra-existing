@@ -35,10 +35,11 @@ jobs:
       # 3. Add official Helm Repositories (CRITICAL: Added jetstack chart indexing here)
       - name: Add Helm Repositories
         run: |
-          helm repo add k8ssandra https://k8ssandra.io
-          helm repo add jetstack https://jetstack.io
+          helm repo remove k8ssandra || true
+          helm repo add k8ssandra https://helm.k8ssandra.io --force-update
+          helm repo add jetstack https://jetstack.io --force-update
           helm repo update
-
+          
       # 4. Create the target namespace using the standardized path
       - name: Create Cassandra Namespace
         run: kubectl apply -f k8s/namespace.yaml
