@@ -5,7 +5,6 @@ on:
     branches:
       - main
 
-# Required for requesting the JWT token from GitHub's OIDC provider
 permissions:
   id-token: write
   contents: read
@@ -17,36 +16,34 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. Authenticate with Azure using passwordless OIDC Federation (Upgraded to v3)
+      # 1. Authenticate with Azure using passwordless OIDC Federation
       - name: Azure Login via OIDC
         uses: azure/login@v3
         with:
-        #  client-id: ${{ secrets.AZURE_CLIENT_ID }}
-        #  tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-        #  subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       # 2. Connect directly to your EXISTING AKS Cluster
-      # Ensure you replace these placeholders with your actual running cluster values
+      # Ensure you have replaced these placeholders with your actual running cluster details
       - name: Get AKS Context Credentials
         uses: azure/aks-set-context@v4
         with:
-          resource-group: 'aks-sutramind-rg'
-          cluster-name: 'aks-sutramind'
+          resource-group: 'YOUR_EXISTING_RESOURCE_GROUP_NAME'
+          cluster-name: 'YOUR_EXISTING_AKS_CLUSTER_NAME'
 
-      # 3. Add the official K8ssandra Helm Repositories
+      # 3. Add official Helm Repositories (CRITICAL: Added jetstack chart indexing here)
       - name: Add Helm Repositories
         run: |
-          helm repo add k8ssandra https://helm.k8ssandra.io
+          helm repo add k8ssandra https://k8ssandra.io
+          helm repo add jetstack https://jetstack.io
           helm repo update
 
-         # 4. Create the target namespace
+      # 4. Create the target namespace using the standardized path
       - name: Create Cassandra Namespace
         run: kubectl apply -f k8s/namespace.yaml
-        
-         # 4b. Install Cert-Manager (Fixes the dependency error)
+
+      # 4b. Install Cert-Manager (Now it will find the jetstack repository)
       - name: Install Cert-Manager
         run: |
           helm upgrade --install cert-manager jetstack/cert-manager \
@@ -54,13 +51,13 @@ jobs:
             --create-namespace \
             --set installCRDs=true
 
-      # 5. Install the K8ssandra Operator from the remote Helm Repository index
+      # 5. Install the K8ssandra Operator
       - name: Install K8ssandra Operator
         run: |
           helm upgrade --install k8ssandra-operator k8ssandra/k8ssandra-operator \
             --namespace cassandra
 
-      # 6. Deploy/Upgrade the actual Cassandra Database Cluster Ring using your local override configs
+      # 6. Deploy/Upgrade the actual Cassandra Database Cluster Ring
       - name: Deploy Cassandra Cluster Ring
         run: |
           helm upgrade --install cassandra-prod k8ssandra/k8ssandra-cluster \
