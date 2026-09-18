@@ -42,19 +42,19 @@ jobs:
           helm repo add k8ssandra https://helm.k8ssandra.io
           helm repo update
 
-      # 4. Create the target namespace
+         # 4. Create the target namespace
       - name: Create Cassandra Namespace
-        run: kubectl apply -f k8s-cassandra/namespace.yaml
+        run: kubectl apply -f k8s-cassandra-existing/namespace.yaml
 
-      # 5. Install the K8ssandra Operator (The automated DBA control plane)
+      # 5. Install the K8ssandra Operator from the remote Helm Repository index
       - name: Install K8ssandra Operator
         run: |
           helm upgrade --install k8ssandra-operator k8ssandra/k8ssandra-operator \
             --namespace cassandra
 
-      # 6. Deploy/Upgrade the actual Cassandra Database Cluster Ring
+      # 6. Deploy/Upgrade the actual Cassandra Database Cluster Ring using your local override configs
       - name: Deploy Cassandra Cluster Ring
         run: |
           helm upgrade --install cassandra-prod k8ssandra/k8ssandra-cluster \
             --namespace cassandra \
-            -f k8s-cassandra/k8ssandra-values.yaml
+            -f k8s-cassandra-existing/k8ssandra-values.yaml
