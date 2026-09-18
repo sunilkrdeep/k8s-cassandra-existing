@@ -39,7 +39,7 @@ jobs:
       # 3. Add the official K8ssandra Helm Repositories
       - name: Add Helm Repositories
         run: |
-          helm repo add k8ssandra https://k8ssandra.io
+          helm repo add k8ssandra https://helm.k8ssandra.io
           helm repo update
 
       # 4. Create the target namespace
