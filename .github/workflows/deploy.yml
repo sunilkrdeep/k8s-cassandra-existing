@@ -1,0 +1,57 @@
+name: "Deploy Cassandra Application to Existing AKS"
+
+on:
+  push:
+    branches:
+      - main
+
+# Required for requesting the JWT token from GitHub's OIDC provider
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy_cassandra:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 1. Authenticate with Azure using passwordless OIDC Federation
+      - name: Azure Login via OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # 2. Connect directly to your EXISTING AKS Cluster
+      # IMPORTANT: Replace these two placeholders with your actual running cluster details
+      - name: Get AKS Context Credentials
+        uses: azure/aks-set-context@v4
+        with:
+          resource-group: 'aks-sutramind-rg'
+          cluster-name: 'aks-sutramind'
+
+      # 3. Add the official K8ssandra Helm Repositories
+      - name: Add Helm Repositories
+        run: |
+          helm repo add k8ssandra https://k8ssandra.io
+          helm repo update
+
+      # 4. Create the target namespace
+      - name: Create Cassandra Namespace
+        run: kubectl apply -f k8s-cassandra/namespace.yaml
+
+      # 5. Install the K8ssandra Operator (The automated DBA control plane)
+      - name: Install K8ssandra Operator
+        run: |
+          helm upgrade --install k8ssandra-operator k8ssandra/k8ssandra-operator \
+            --namespace cassandra
+
+      # 6. Deploy/Upgrade the actual Cassandra Database Cluster Ring
+      - name: Deploy Cassandra Cluster Ring
+        run: |
+          helm upgrade --install cassandra-prod k8ssandra/k8ssandra-cluster \
+            --namespace cassandra \
+            -f k8s-cassandra/k8ssandra-values.yaml
